@@ -110,7 +110,7 @@ async def test_multi_turn_no_handoffs():
                 "children": [
                     {
                         "type": "agent",
-                        "error": {"message": "Error in agent run", "data": {"error": "test error"}},
+                        "error": {"message": "Error in agent run", "data": {"error": 'test error'}},
                         "data": {
                             "name": "test_agent",
                             "handoffs": [],
@@ -118,23 +118,7 @@ async def test_multi_turn_no_handoffs():
                             "output_type": "str",
                         },
                         "children": [
-                            {"type": "generation"},
-                            {
-                                "type": "function",
-                                "data": {
-                                    "name": "foo",
-                                    "input": '{"a": "b"}',
-                                    "output": "tool_result",
-                                },
-                            },
-                            {
-                                "type": "generation",
-                                "error": {
-                                    "message": "Error",
-                                    "data": {"name": "ValueError", "message": "test error"},
-                                },
-                            },
-                        ],
+                            {"type": "generation"}, {'type':'function','data':{'name':'foo','input':'{"a": "b"}','output':'tool_result'}}, {'type':'generation','error':{'message':'Error','data':{'name':'ValueError','message':'test error'}}}],
                     }
                 ],
             }

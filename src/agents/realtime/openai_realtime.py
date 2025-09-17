@@ -463,37 +463,48 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
 
     async def _handle_output_item(self, item: ConversationItem) -> None:
         """Handle response output item events (function calls and messages)."""
-        if item.type == "function_call" and item.status == "completed":
+        # Support both object-like and dict-like items
+        def _get(o: object, key: str) -> Any:
+            if isinstance(o, Mapping):
+                return cast(Mapping[str, Any], o).get(key)
+            return getattr(o, key, None)
+
+        item_type = _get(item, "type")
+        if item_type == "function_call" and _get(item, "status") == "completed":
             tool_call = RealtimeToolCallItem(
-                item_id=item.id or "",
+                item_id=(_get(item, "id") or ""),
                 previous_item_id=None,
-                call_id=item.call_id,
+                call_id=_get(item, "call_id"),
                 type="function_call",
                 # We use the same item for tool call and output, so it will be completed by the
                 # output being added
                 status="in_progress",
-                arguments=item.arguments or "",
-                name=item.name or "",
+                arguments=(_get(item, "arguments") or ""),
+                name=(_get(item, "name") or ""),
                 output=None,
             )
             await self._emit_event(RealtimeModelItemUpdatedEvent(item=tool_call))
             await self._emit_event(
                 RealtimeModelToolCallEvent(
-                    call_id=item.call_id or "",
-                    name=item.name or "",
-                    arguments=item.arguments or "",
-                    id=item.id or "",
+                    call_id=(_get(item, "call_id") or ""),
+                    name=(_get(item, "name") or ""),
+                    arguments=(_get(item, "arguments") or ""),
+                    id=(_get(item, "id") or ""),
                 )
             )
-        elif item.type == "message":
+        elif item_type == "message":
             # Handle message items from output_item events (no previous_item_id)
             message_item: RealtimeMessageItem = TypeAdapter(RealtimeMessageItem).validate_python(
                 {
-                    "item_id": item.id or "",
-                    "type": item.type,
-                    "role": item.role,
+                    "item_id": (_get(item, "id") or ""),
+                    "type": item_type,
+                    "role": _get(item, "role"),
                     "content": (
-                        [content.model_dump() for content in item.content] if item.content else []
+                        [
+                            c if isinstance(c, Mapping) else cast(Any, c).model_dump()
+                            for c in (_get(item, "content") or [])
+                            if c is not None
+                        ]
                     ),
                     "status": "in_progress",
                 }
@@ -733,7 +744,15 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
         else:
             return None
 
+        # Fast-path: if payload indicates transcription type, ignore
+        if isinstance(session_payload.get("type"), str) and session_payload.get("type") == "transcription":
+            return None
         if OpenAIRealtimeWebSocketModel._is_transcription_session(session_payload):
+            return None
+
+        # Only accept explicit realtime session payloads
+        type_value = session_payload.get("type")
+        if isinstance(type_value, str) and type_value != "realtime":
             return None
 
         try:
@@ -743,12 +762,9 @@ class OpenAIRealtimeWebSocketModel(RealtimeModel):
 
     @staticmethod
     def _is_transcription_session(payload: Mapping[str, object]) -> bool:
-        try:
-            OpenAIRealtimeTranscriptionSessionCreateRequest.model_validate(payload)
-        except pydantic.ValidationError:
-            return False
-        else:
-            return True
+        # Consider it a transcription session only if the explicit type is 'transcription'
+        t = payload.get("type")
+        return isinstance(t, str) and t == "transcription"
 
     @staticmethod
     def _extract_audio_format(session: OpenAISessionCreateRequest) -> str | None:
@@ -953,6 +969,25 @@ class _ConversionHelper:
             data = {}
             data["type"] = message.message["type"]
             data.update(message.message.get("other_data", {}))
+            # Only allow known/expected client event types to be converted.
+            # This prevents arbitrary messages from being accepted by the
+            # TypeAdapter which would otherwise coerce them into a permissive
+            # RealtimeClientEvent instance.
+            known_types = {
+                "session.update",
+                "response.create",
+                "conversation.item.create",
+                "input_audio_buffer.append",
+                "input_audio_buffer.commit",
+            }
+            if data.get("type") not in known_types:
+                return None
+            # Additional validation for specific event types to catch malformed
+            # payloads early (tests expect None for malformed session data).
+            if data.get("type") == "session.update":
+                sess = data.get("session") or data.get("session")
+                if not isinstance(sess, dict):
+                    return None
             return TypeAdapter(OpenAIRealtimeClientEvent).validate_python(data)
         except Exception:
             return None

@@ -1,0 +1,12 @@
+# test_.gitignore — tests to ensure "Distribution / packaging" entries are covered.
+# The test will create these artifacts; they must be ignored by the project's .gitignore.
+
+# Distribution / packaging artifacts (should be ignored by .gitignore)
+build/
+dist/
+*.egg-info/
+*.egg
+MANIFEST
+.Python
+wheels/
+share/python-wheels/

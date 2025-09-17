@@ -1,0 +1,28 @@
+name: Dev Setup & Example
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  dev-setup-and-test:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: fake-for-tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install make
+        run: sudo apt-get update && sudo apt-get install -y make
+      - name: Run dev-setup
+        run: make dev-setup
+      - name: Run tests
+        run: .venv/bin/python -m pytest tests
+      - name: Run example
+        run: make run-example

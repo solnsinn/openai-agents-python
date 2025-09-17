@@ -4,6 +4,9 @@ The OpenAI Agents SDK is a lightweight yet powerful framework for building multi
 
 <img src="https://cdn.openai.com/API/docs/images/orchestration.png" alt="Image of the Agents Tracing UI" style="max-height: 803px;">
 
+[![Tests](https://github.com/openai/openai-agents-python/actions/workflows/tests.yml/badge.svg)](https://github.com/openai/openai-agents-python/actions/workflows/tests.yml)
+[![Dev Setup & Example](https://github.com/openai/openai-agents-python/actions/workflows/dev-setup-check.yml/badge.svg)](https://github.com/openai/openai-agents-python/actions/workflows/dev-setup-check.yml)
+
 > [!NOTE]
 > Looking for the JavaScript/TypeScript version? Check out [Agents SDK JS/TS](https://github.com/openai/openai-agents-js).
 
@@ -60,6 +63,13 @@ print(result.final_output)
 (_If running this, ensure you set the `OPENAI_API_KEY` environment variable_)
 
 (_For Jupyter notebook users, see [hello_world_jupyter.ipynb](examples/basic/hello_world_jupyter.ipynb)_)
+
+## Contributing
+
+See `CONTRIBUTING.md` for development setup and testing instructions. Briefly:
+
+- Run `make dev-setup` to create a `.venv` and install dev dependencies.
+- Run the test suite with `.venv/bin/python -m pytest tests`.
 
 ## Handoffs example
 

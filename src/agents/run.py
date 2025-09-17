@@ -599,19 +599,41 @@ class AgentRunner:
         conversation_id = kwargs.get("conversation_id")
         session = kwargs.get("session")
 
-        return asyncio.get_event_loop().run_until_complete(
-            self.run(
-                starting_agent,
-                input,
-                session=session,
-                context=context,
-                max_turns=max_turns,
-                hooks=hooks,
-                run_config=run_config,
-                previous_response_id=previous_response_id,
-                conversation_id=conversation_id,
+        # Run the async runner from sync code. If there's no current event
+        # loop (e.g., default test environment), asyncio.get_event_loop()
+        # raises RuntimeError. In that case use asyncio.run which creates a
+        # fresh event loop for this call. If a loop exists we try to use
+        # run_until_complete on it (the common case in sync contexts).
+        try:
+            loop = asyncio.get_event_loop()
+            return loop.run_until_complete(
+                self.run(
+                    starting_agent,
+                    input,
+                    session=session,
+                    context=context,
+                    max_turns=max_turns,
+                    hooks=hooks,
+                    run_config=run_config,
+                    previous_response_id=previous_response_id,
+                    conversation_id=conversation_id,
+                )
             )
-        )
+        except RuntimeError:
+            # No current event loop: create one for this synchronous call.
+            return asyncio.run(
+                self.run(
+                    starting_agent,
+                    input,
+                    session=session,
+                    context=context,
+                    max_turns=max_turns,
+                    hooks=hooks,
+                    run_config=run_config,
+                    previous_response_id=previous_response_id,
+                    conversation_id=conversation_id,
+                )
+            )
 
     def run_streamed(
         self,

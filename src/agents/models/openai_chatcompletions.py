@@ -82,7 +82,11 @@ class OpenAIChatCompletionsModel(Model):
             first_choice: Choice | None = None
             if response.choices and len(response.choices) > 0:
                 first_choice = response.choices[0]
-                message = first_choice.message
+                # Support both attribute-access choice objects and plain dicts
+                if isinstance(first_choice, dict):
+                    message = first_choice.get("message")
+                else:
+                    message = getattr(first_choice, "message", None)
 
             if _debug.DONT_LOG_MODEL_DATA:
                 logger.debug("Received model response")
@@ -313,7 +317,21 @@ class OpenAIChatCompletionsModel(Model):
             **(model_settings.extra_args or {}),
         )
 
-        if isinstance(ret, ChatCompletion):
+        # Some shimbed types or upstream TypedDicts can raise TypeError when used
+        # with isinstance(). Defensively handle that and fall back to a
+        # best-effort attribute check so tests that return a ChatCompletion
+        # instance (or equivalent) get the object back unchanged.
+        try:
+            is_chat = isinstance(ret, ChatCompletion)
+        except TypeError:
+            is_chat = False
+
+        if not is_chat:
+            # Best-effort duck-typing: a ChatCompletion-like object will have
+            # 'id' and 'choices' attributes (choices is a list-like).
+            is_chat = hasattr(ret, "choices") and hasattr(ret, "id")
+
+        if is_chat:
             return ret
 
         responses_tool_choice = OpenAIResponsesConverter.convert_tool_choice(

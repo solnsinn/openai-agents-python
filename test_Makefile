@@ -1,0 +1,14 @@
+import re
+from pathlib import Path
+
+def test_check_target_has_expected_prereqs():
+    mf = Path(__file__).resolve().parent / "Makefile"
+    assert mf.exists(), "Makefile not found in repository root"
+    text = mf.read_text()
+
+    m = re.search(r'^\s*check\s*:\s*(.*)$', text, re.MULTILINE)
+    assert m, "No 'check:' target found in Makefile"
+
+    deps = [tok for tok in m.group(1).strip().split() if tok]
+    expected = {"format-check", "lint", "mypy", "tests"}
+    assert set(deps) == expected, f"'check' prerequisites are {deps}, expected {sorted(expected)}"
