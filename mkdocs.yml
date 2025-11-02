@@ -63,6 +63,7 @@ plugins:
                 - repl.md
                 - tools.md
                 - mcp.md
+                - codex_cli_workflows.md
                 - handoffs.md
                 - tracing.md
                 - context.md
@@ -160,6 +161,7 @@ plugins:
                 - repl.md
                 - tools.md
                 - mcp.md
+                - codex_cli_workflows.md
                 - handoffs.md
                 - tracing.md
                 - context.md
